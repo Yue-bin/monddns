@@ -1,40 +1,59 @@
-local log = {}
+local _M = {}
+local base = _G
 
 -- 日志相关
 -- 搬了一点monlog
-log.loglevels = {
-    [0] = "DEBUG",
-    [1] = "INFO",
-    [2] = "WARN",
-    [3] = "ERROR",
-    [4] = "FATAL",
+local loglevels = {
     DEBUG = 0,
     INFO = 1,
     WARN = 2,
     ERROR = 3,
     FATAL = 4
 }
-local loglevelmax = 4
-local loglevelmin = 0
--- 默认日志级别
 
-local LOG_LEVEL = log.loglevels.INFO
--- LOG_LEVEL = loglevels.DEBUG
-function log.setlevel(level)
-    LOG_LEVEL = level
+-- 默认日志级别
+_M.LOG_LEVEL = "INFO"
+-- LOG_LEVEL = "DEBUG"
+
+-- 日志输出流
+-- 未初始化无法使用
+_M.outputstream = nil
+
+local table_has_key = function(t, key)
+    for k, _ in base.pairs(t) do
+        if k == key then
+            return true
+        end
+    end
+    return false
 end
 
--- 输出日志到控制台
--- outputstream默认为stderr
--- level默认为INFO
-function log.log(msg, level, outputstream)
-    outputstream = outputstream or io.stderr
-    level = level or log.loglevels.INFO
-    assert((level >= loglevelmin and level <= loglevelmax), "log level is invalid")
-    if level >= LOG_LEVEL then
-        -- 使用outputstream输出日志
-        outputstream:write(os.date("%Y.%m.%d-%H:%M:%S"), " [", log.loglevels[level], "] ", msg, "\n")
+-- 设置日志级别
+function _M:setlevel(level)
+    if table_has_key(loglevels, level) then
+        _M.LOG_LEVEL = level
+    else
+        base.error("log level is invalid")
     end
 end
 
-return log
+-- 输出日志
+-- outputstream默认为stderr
+-- level默认为INFO
+function _M:log(msg, level)
+    level = level or "INFO"
+    if loglevels[level] >= loglevels[_M.LOG_LEVEL] then
+        -- 使用outputstream输出日志
+        self.outputstream:write(base.os.date("%Y.%m.%d-%H:%M:%S"), " [", level, "] ", msg, "\n")
+    end
+end
+
+-- 初始化
+local function init(stream)
+    _M.outputstream = stream or base.io.stderr
+    return _M
+end
+
+return {
+    init = init,
+}
