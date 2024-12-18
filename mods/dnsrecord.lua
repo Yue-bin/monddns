@@ -70,14 +70,25 @@ local function recordlist_contains(rl, dr)
     return false
 end
 
--- recordlist添加一个dnsrecord,使用..
+-- recordlist添加一个dnsrecord,使用+
 local function recordlist_add(rl, dr)
     if not rl < dr then
         rl[#rl + 1] = dr
     end
 end
 
--- recordlist合并,重复项仅保留一个,使用+
+-- recordlist减去一个dnsrecord,使用-
+local function recordlist_sub(rl, dr)
+    local result = {}
+    for i = 1, #rl do
+        if not rl[i] == dr then
+            result[#result + 1] = rl[i]
+        end
+    end
+    return result
+end
+
+-- recordlist合并,重复项仅保留一个,使用..
 local function recordlist_merge(rl1, rl2)
     local result = {}
     for i = 1, #rl1 do
@@ -91,16 +102,6 @@ local function recordlist_merge(rl1, rl2)
     return result
 end
 
--- recordlist减去另一个recordlist,使用-
-local function recordlist_sub(rl1, rl2)
-    local result = {}
-    for i = 1, #rl1 do
-        if not rl2 < rl1[i] then
-            result[#result + 1] = rl1[i]
-        end
-    end
-    return result
-end
 
 -- 限定recordlist为dnsrecord类型的列表
 local recordlist_mt = {
@@ -114,9 +115,9 @@ local recordlist_mt = {
     end,
     __eq = recordlist_equal,
     __lt = recordlist_contains,
-    __concat = recordlist_add,
-    __add = recordlist_merge,
+    __add = recordlist_add,
     __sub = recordlist_sub,
+    __concat = recordlist_merge,
 }
 
 local function new_rl()

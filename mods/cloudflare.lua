@@ -10,6 +10,7 @@ local url = base.require("socket.url")
 local http = base.require("socket.http")
 local ltn12 = base.require("ltn12")
 local json = base.require("cjson")
+local dnsrecord = base.require("mods.dnsrecord")
 
 
 local base_url = "https://api.cloudflare.com/client/v4"
@@ -40,14 +41,14 @@ end
 ]]
 -- 获取zone_id
 function _M.get_zone_id(domin_name)
-    local result, code, err = cf_request({
+    local resp_body, code, err = cf_request({
         url = base_url .. "/zones?name=" .. domin_name,
         method = "GET"
     })
-    if not result then
+    if not resp_body then
         return nil, code, err
     else
-        return result.result[1].id
+        return resp_body.result[1].id
     end
 end
 
@@ -59,14 +60,19 @@ curl --request GET \
 --]=]
 -- 获取dns记录
 function _M.get_dns_records(rr, zone_id)
-    local result, code, err = cf_request({
+    local resp_body, code, err = cf_request({
         url = base_url .. "/zones/" .. zone_id .. "/dns_records?name.exact=" .. rr,
         method = "GET"
     })
-    if not result then
+    if not resp_body then
         return nil, code, err
     else
-        return result.result[1]
+        -- 将结果归一化为recordlist类型
+        local result = dnsrecord.new_recordlist()
+        for _, v in ipairs(resp_body.result) do
+            local dr = dnsrecord.new_dnsrecord(v.name, v.zone_name, v.type, v.content, v.ttl)
+            result = result .. dr
+        end
     end
 end
 
