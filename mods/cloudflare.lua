@@ -83,13 +83,13 @@ end
 
 -- 将cloudflare的record类型转换为dnsrecord类型
 local function cfrecord_to_dnsrecord(cf_dr)
-    local dr = dnsrecord.new_dnsrecord(
-        cf_dr.id,
-        base.string.gsub(cf_dr.name, "." .. cf_dr.zone_name, ""),
-        cf_dr.zone_name,
-        cf_dr.type,
-        cf_dr.content,
-        cf_dr.ttl)
+    local dr = dnsrecord.new_dnsrecord {
+        id = cf_dr.id,
+        rr = base.string.gsub(cf_dr.name, "." .. cf_dr.zone_name, ""),
+        domain = cf_dr.zone_name,
+        type = cf_dr.type,
+        value = cf_dr.content,
+        ttl = cf_dr.ttl }
     return dr
 end
 

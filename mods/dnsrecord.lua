@@ -33,14 +33,14 @@ local dnsrecord_mt = {
 }
 base.setmetatable(dnsrecord, dnsrecord_mt)
 
-local function new_dr(id, rr, domain, type, value, ttl)
+local function new_dr(dr)
     local new_dr_obj = {
-        id = id or "",
-        rr = rr or "",
-        domain = domain or "",
-        type = type or "",
-        value = value or "",
-        ttl = ttl or 1
+        id = dr.id or "",
+        rr = dr.rr or "",
+        domain = dr.domain or "",
+        type = dr.type or "",
+        value = dr.value or "",
+        ttl = dr.ttl or 1
     }
     base.setmetatable(new_dr_obj, dnsrecord_mt)
     return new_dr_obj
