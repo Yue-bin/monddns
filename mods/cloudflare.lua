@@ -40,9 +40,9 @@ end
     --url 'https://api.cloudflare.com/client/v4/zones?name=example.com'
 ]]
 -- 获取zone_id
-function _M.get_zone_id(domin_name)
+function _M.get_zone_id(domain_name)
     local resp_body, code, err = cf_request({
-        url = base_url .. "/zones?name=" .. domin_name,
+        url = base_url .. "/zones?name=" .. domain_name,
         method = "GET"
     })
     if not resp_body then
@@ -59,9 +59,10 @@ curl --request GET \
                     --header 'Authorization: Bearer ]] .. CFAPIKey
 --]=]
 -- 获取dns记录
-function _M.get_dns_records(rr, zone_id)
+function _M.get_dns_records(name, zone_id, match_opt)
+    match_opt = match_opt or "exact"
     local resp_body, code, err = cf_request({
-        url = base_url .. "/zones/" .. zone_id .. "/dns_records?name.exact=" .. rr,
+        url = base_url .. "/zones/" .. zone_id .. "/dns_records?name." .. match_opt .. "=" .. name,
         method = "GET"
     })
     if not resp_body then
@@ -70,10 +71,29 @@ function _M.get_dns_records(rr, zone_id)
         -- 将结果归一化为recordlist类型
         local result = dnsrecord.new_recordlist()
         for _, v in ipairs(resp_body.result) do
-            local dr = dnsrecord.new_dnsrecord(v.name, v.zone_name, v.type, v.content, v.ttl)
-            result = result .. dr
+            local dr = dnsrecord.new_dnsrecord(
+                base.string.gsub(v.name, "." .. v.zone_name, ""),
+                v.zone_name,
+                v.type,
+                v.content,
+                v.ttl)
+            result = result + dr
         end
+        print(result)
+        return result
     end
+end
+
+-- 更新dns记录
+function _M.update_dns_record(dns_record, zone_id)
+end
+
+-- 删除dns记录
+function _M.delete_dns_record(dns_record, zone_id)
+end
+
+-- 创建dns记录
+function _M.create_dns_record(dns_record, zone_id)
 end
 
 function _M.new(auth)

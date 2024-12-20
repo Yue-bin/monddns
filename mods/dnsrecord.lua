@@ -7,16 +7,17 @@ local base = _G
 -- dnsrecord类型
 -- 示例:web.example.com
 local dnsrecord = {
-    rr = "",    -- web
-    domin = "", -- example.com
-    type = "",  -- A
-    value = "", -- 1.2.3.4
-    ttl = 1,    -- 1
+    id = "",     -- 1234567890qwertyuiop
+    rr = "",     -- web
+    domain = "", -- example.com
+    type = "",   -- A
+    value = "",  -- 1.2.3.4
+    ttl = 1,     -- 1
 }
 
 -- dnsrecord判断相等,使用==
 local function dnsrecord_equal(dr1, dr2)
-    return dr1.rr == dr2.rr and dr1.domin == dr2.domin and dr1.type == dr2.type and dr1.value == dr2.value
+    return dr1.rr == dr2.rr and dr1.domain == dr2.domain and dr1.type == dr2.type and dr1.value == dr2.value
 end
 
 local dnsrecord_mt = {
@@ -30,11 +31,13 @@ local dnsrecord_mt = {
     end,
     __eq = dnsrecord_equal,
 }
+base.setmetatable(dnsrecord, dnsrecord_mt)
 
-local function new_dr(rr, domin, type, value, ttl)
+local function new_dr(id, rr, domain, type, value, ttl)
     local new_dr_obj = {
+        id = id or "",
         rr = rr or "",
-        domin = domin or "",
+        domain = domain or "",
         type = type or "",
         value = value or "",
         ttl = ttl or 1
@@ -60,42 +63,50 @@ local function recordlist_equal(rl1, rl2)
     return true
 end
 
--- recordlist判断是否包含某个dnsrecord,使用<
+-- recordlist判断是否包含某个dnsrecord, 使用<
 local function recordlist_contains(rl, dr)
     for i = 1, #rl do
-        if rl[i] == dr then
+        if dnsrecord_equal(rl[i], dr) then
             return true
         end
     end
     return false
 end
 
--- recordlist添加一个dnsrecord,使用+
-local function recordlist_add(rl, dr)
-    if not rl < dr then
-        rl[#rl + 1] = dr
+-- 考虑到我在实际使用中, 需要的最多的操作是
+--  1.从空列表开始往recordlist中添加元素(获取dns记录等)
+--  2.合并两个recordlist(多个不同来源的dns记录)
+--  3.比较两个recordlist的差异(更新dns记录)
+-- 实际上, 我并不需要对recordlist进行删除单个元素的操作
+
+-- recordlist添加一个dnsrecord, 使用..
+local function recordlist_add_element(rl, dr)
+    local result = rl
+    if not recordlist_contains(rl, dr) then
+        result[#result + 1] = dr
     end
+    return result
 end
 
--- recordlist减去一个dnsrecord,使用-
-local function recordlist_sub(rl, dr)
+-- recordlist相减, 从rl1中删去所有出现在rl2中的项, 使用-
+local function recordlist_sub(rl1, rl2)
     local result = {}
-    for i = 1, #rl do
-        if not rl[i] == dr then
-            result[#result + 1] = rl[i]
+    for i = 1, #rl1 do
+        if not recordlist_contains(rl2, rl1[i]) then
+            result[#result + 1] = rl1[i]
         end
     end
     return result
 end
 
--- recordlist合并,重复项仅保留一个,使用..
+-- recordlist合并, 重复项仅保留一个, 使用+
 local function recordlist_merge(rl1, rl2)
     local result = {}
     for i = 1, #rl1 do
         result[#result + 1] = rl1[i]
     end
     for i = 1, #rl2 do
-        if not result < rl2[i] then
+        if not recordlist_contains(result, rl2[i]) then
             result[#result + 1] = rl2[i]
         end
     end
@@ -115,10 +126,11 @@ local recordlist_mt = {
     end,
     __eq = recordlist_equal,
     __lt = recordlist_contains,
-    __add = recordlist_add,
+    __concat = recordlist_add_element,
     __sub = recordlist_sub,
-    __concat = recordlist_merge,
+    __add = recordlist_merge,
 }
+base.setmetatable(recordlist, recordlist_mt)
 
 local function new_rl()
     local new_rl_obj = {}
