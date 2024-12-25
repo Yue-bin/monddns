@@ -1,15 +1,16 @@
 config = {
+
     log = {
-        level = "info",
+        level = "trace",
         path = "/var/log/monddns.log",
     },
     confs = {
         {
             name = "test_cf",
             domain = "example.com",
-            service_provider = "cloudflare",
+            provider = "cloudflare",
             auth = {
-                api_token = "your_api_token",
+                api_token = "api token",
             },
             subs = {
                 {
@@ -17,13 +18,23 @@ config = {
                     ip_list = {
                         {
                             type = "A",
+                            method = "static",
+                            content = "8.8.8.8",
+                        },
+                        {
+                            type = "A",
                             method = "url",
-                            url = "https://v4.ident.me",
+                            content = "https://v4.ident.me",
+                        },
+                        {
+                            type = "AAAA",
+                            method = "static",
+                            content = "::1",
                         },
                         {
                             type = "AAAA",
                             method = "url",
-                            url = "https://v6.ident.me",
+                            content = "https://v6.ident.me",
                         },
                     },
                 },
@@ -33,7 +44,7 @@ config = {
                         {
                             type = "A",
                             method = "url",
-                            url = "https://v4.ident.me",
+                            content = "https://v4.ident.me",
                         },
                     },
                 },
@@ -43,11 +54,21 @@ config = {
                         {
                             type = "A",
                             method = "cmd",
-                            cmd =
+                            content =
                             [[ip -4 addr show | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | grep -v '^127\.' | head -n 1]],
                         },
                     },
                 },
+                {
+                    sub_domain = "static.test",
+                    ip_list = {
+                        {
+                            type = "A",
+                            method = "static",
+                            content = "8.8.8.8",
+                        },
+                    },
+                }
             },
         },
     }
