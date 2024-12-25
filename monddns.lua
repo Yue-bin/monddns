@@ -5,6 +5,7 @@
 -- A simple dynamic DNS script
 local log = require("mods/log")
 local dnsrecord = require("mods/dnsrecord")
+local getip = require("mods/getip")
 
 -- Parse Configuration
 local conf = require("mods/confloader").load_conf("monddns", arg)
@@ -43,28 +44,59 @@ for _, c in ipairs(conf.confs) do
             }
         else
             g_log:log("Invalid auth configuration for " .. c.name, "ERROR")
-            goto continue
+            goto g_continue
         end
         if cf_ins == nil then
             g_log:log("Failed to initialize cloudflare instance for " .. c.name .. ": " .. cf_err, "ERROR")
-            goto continue
+            goto g_continue
         end
 
         -- 获取zone_id
         local zone_id, code, err = cf_ins.get_zone_id(c.domain)
         if zone_id == nil then
             g_log:log("Failed to get zone_id for " .. c.name .. ": " .. code .. " " .. err, "ERROR")
-            goto continue
+            goto g_continue
         end
 
         code = nil
         err = nil
-        -- 获取现有的dns记录
-        local recordlist, code, err = cf_ins.get_dns_records(zone_id)
 
-        -- 将配置文件中的记录转换为recordlist类型
+        -- 处理配置中每一个子域名
+        local new_recordlist = dnsrecord.new_recordlist()
+        for _, sub in ipairs(c.subs) do
+            -- 获取现有的dns记录
+            local recordlist, code, err = cf_ins.get_dns_records(sub.sub_domain, zone_id)
+            if recordlist == nil then
+                g_log:log(
+                    "Failed to get dns records for " .. c.name .. " " .. sub.sub_domain .. ": " .. code .. " " .. err,
+                    "ERROR")
+                goto sub_continue
+            end
+            g_log:log("Got dns record with lenth " .. #recordlist, "INFO")
+            g_log:log("those dns records are " .. table.concat(recordlist, ", "), "INFO")
+
+            for _, ip_setting in ipairs(sub.ip_list) do
+                print(ip_setting.method, ip_setting.content)
+                local ip_list = getip(ip_setting.method, ip_setting.content)
+                if ip_list == nil then
+                    g_log:log("Failed to get IP for " .. c.name .. " " .. sub.sub_domain, "ERROR")
+                    goto getip_continue
+                end
+                for _, ip in ipairs(ip_list) do
+                    new_recordlist = new_recordlist + dnsrecord.new_dnsrecord {
+                        rr = sub.sub_domain,
+                        domain = c.domain,
+                        type = ip_setting.type,
+                        value = ip,
+                        ttl = 120
+                    }
+                end
+                ::getip_continue::
+            end
+            ::sub_continue::
+        end
     end
-    ::continue::
+    ::g_continue::
 end
 
 -- Get Realtime IP Address
