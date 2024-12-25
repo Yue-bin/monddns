@@ -31,7 +31,7 @@ local function cf_request(reqt)
     reqt.headers = req_headers
     reqt.sink = ltn12.sink.table(resp_body)
     ---@diagnostic disable-next-line: need-check-nil, undefined-field
-    if log.LOG_LEVEL == "DEBUG" then
+    if log.LOG_LEVEL == "TRACE" then
         local reqt_dump = {}
         for k, v in base.pairs(reqt) do
             if k == "source" then
@@ -40,7 +40,7 @@ local function cf_request(reqt)
                 -- 使用 ltn12.pump.all 从 source 提取数据到 result
                 local success, err = ltn12.pump.all(v, sink)
                 if not success then
-                    cf_log("Failed to extract data from source: " .. base.tostring(err), "DEBUG")
+                    cf_log("Failed to extract data from source: " .. base.tostring(err), "TRACE")
                 end
                 reqt_dump.source = base.table.concat(result)
                 -- 重建source
@@ -51,20 +51,20 @@ local function cf_request(reqt)
                 reqt_dump[k] = v
             end
         end
-        cf_log("request: " .. json.encode(reqt_dump), "DEBUG")
+        cf_log("request: " .. json.encode(reqt_dump), "TRACE")
     end
     local _, code, headers, status = http.request(reqt)
     -- 判断状态码是否为2xx
     if code >= 200 and code < 300 then
-        cf_log("request success with code " .. code .. ", body " .. resp_body[1], "DEBUG")
-        return json.decode(resp_body[1]), code
+        cf_log("request success with code " .. code .. ", body " .. resp_body[1], "TRACE")
+        return json.decode(resp_body[1])
     else
         if resp_body then
-            cf_log("request failed with code " .. code .. ", body " .. resp_body[1], "DEBUG")
-            return nil, code, json.decode(resp_body[1])
+            cf_log("request failed with code " .. code .. ", body " .. resp_body[1], "TRACE")
+            return nil, code, resp_body[1]
         end
-        cf_log("request failed with code " .. code, "DEBUG")
-        return nil, code
+        cf_log("request failed with code " .. code, "TRACE")
+        return nil, code, ""
     end
 end
 
@@ -138,6 +138,13 @@ function _M.update_dns_record(recordlist, zone_id)
             method = "PATCH",
             source = ltn12.source.string(json.encode(dnsrecord_to_cfrecord(dr)))
         }
+        if result then
+            cf_log("update dns record " .. dr.value .. " " .. dr.rr .. "." .. dr.domain .. " success", "INFO")
+        else
+            cf_log(
+                "update dns record " .. dr.value .. " " .. dr.rr .. "." .. dr.domain .. " failed: " .. code .. " " .. err,
+                "ERROR")
+        end
     end
 end
 
@@ -149,6 +156,13 @@ function _M.delete_dns_record(recordlist, zone_id)
             url = base_url .. "/zones/" .. zone_id .. "/dns_records/" .. dr.id,
             method = "DELETE"
         }
+        if result then
+            cf_log("delete dns record " .. dr.value .. " " .. dr.rr .. "." .. dr.domain .. " success", "INFO")
+        else
+            cf_log(
+                "delete dns record " .. dr.value .. " " .. dr.rr .. "." .. dr.domain .. " failed: " .. code .. " " .. err,
+                "ERROR")
+        end
     end
 end
 
@@ -161,6 +175,14 @@ function _M.create_dns_record(recordlist, zone_id)
             method = "POST",
             source = ltn12.source.string(json.encode(dnsrecord_to_cfrecord(dr)))
         }
+        if result then
+            cf_log("create dns record " .. dr.value .. " " .. dr.rr .. "." .. dr.domain .. " success", "INFO")
+        else
+            cf_log(
+                "create dns record " .. dr.value .. " " .. dr.rr ..
+                "." .. dr.domain .. " failed: " .. code .. " " .. err,
+                "ERROR")
+        end
     end
 end
 

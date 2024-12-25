@@ -1,7 +1,7 @@
 config = {
     log = {
         level = "info",
-        path = "./monddns.log",
+        path = "/var/log/monddns.log",
     },
     confs = {
         {

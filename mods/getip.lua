@@ -18,7 +18,7 @@ local function from_url(url)
         end
         return ip_list
     else
-        return nil, code, body
+        return nil, code, (body or "")
     end
 end
 
@@ -33,7 +33,7 @@ local function from_cmd(cmd)
         f:close()
         return ip_list
     else
-        return nil, 0, err
+        return nil, 0, (err or "")
     end
 end
 
@@ -43,12 +43,12 @@ local function from_value(value)
 end
 
 -- 选择获取ip的方法
-local function selector(content, method)
+local function selector(method, content)
     if method == "url" then
         return from_url(content)
     elseif method == "cmd" then
         return from_cmd(content)
-    elseif method == "value" then
+    elseif method == "static" then
         return from_value(content)
     else
         return nil, 0, "unknown method"
