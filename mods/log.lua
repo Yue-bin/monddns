@@ -30,10 +30,11 @@ end
 
 -- 设置日志级别
 function _M:setlevel(level)
+    level = base.string.upper(level)
     if table_has_key(loglevels, level) then
         _M.LOG_LEVEL = level
     else
-        base.error("log level is invalid")
+        base.error("log level \"" .. level .. "\" is invalid")
     end
 end
 
