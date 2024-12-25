@@ -69,7 +69,6 @@ for _, config in ipairs(conf.confs) do
             g_log:log("Processing sub domain " .. sub.sub_domain, "INFO")
             -- 获取现有的dns记录
             local recordlist, code, err = ps_ins.get_dns_records(sub.sub_domain .. "." .. config.domain, zone_id)
-            print(json.encode(recordlist))
             if recordlist == nil then
                 g_log:log(
                     "Failed to get dns records for " ..
