@@ -42,16 +42,77 @@ function processer.cloudflare(config)
     return cf_ins
 end
 
--- Main Loop
--- 遍历配置文件中每一个配置
-g_log:log("Start processing", "INFO")
-for _, config in ipairs(conf.confs) do
+-- 从主循环拆出来的子函数，用于避免goto
+-- 获取新记录列表
+local function get_new_rl(config, sub, ip_setting, new_recordlist)
+    local ip_list, code, err = getip(ip_setting.method, ip_setting.content)
+    if ip_list == nil then
+        g_log:log(
+            "Failed to get IP for " .. config.name .. " " .. sub.sub_domain .. " with code " .. code ..
+            " error " .. err, "ERROR")
+        return
+    end
+    g_log:log("Got " .. #ip_list .. " IPs with " .. ip_setting.method .. " " .. ip_setting.content, "INFO")
+    if #ip_list ~= 0 then
+        g_log:log("those IPs are " .. table.concat(ip_list, ", "), "DEBUG")
+    end
+    for _, ip in ipairs(ip_list) do
+        new_recordlist = new_recordlist .. dnsrecord.new_dnsrecord {
+            rr = sub.sub_domain,
+            domain = config.domain,
+            type = ip_setting.type,
+            value = ip,
+            ttl = 1
+        }
+    end
+end
+
+-- 用于处理每一个子域名
+local function processe_sub(config, ps_ins, zone_id, sub)
+    g_log:log("Processing sub domain " .. sub.sub_domain, "INFO")
+    -- 获取现有的dns记录
+    local recordlist, code, err = ps_ins.get_dns_records(sub.sub_domain .. "." .. config.domain, zone_id)
+    if recordlist == nil then
+        g_log:log(
+            "Failed to get dns records for " ..
+            config.name .. " " .. sub.sub_domain .. ": " .. code .. " " .. err,
+            "ERROR")
+        return
+    end
+    g_log:log("Got dns record with lenth " .. #recordlist, "INFO")
+    if #recordlist ~= 0 then
+        g_log:log("those dns records are " .. json.encode(recordlist), "DEBUG")
+    end
+
+    -- 获取新的dns记录
+    local new_recordlist = dnsrecord.new_recordlist()
+    for _, ip_setting in ipairs(sub.ip_list) do
+        get_new_rl(config, sub, ip_setting, new_recordlist)
+    end
+
+    -- 比较现有的dns记录和新的dns记录
+    local to_delete = recordlist - new_recordlist
+    local to_add = new_recordlist - recordlist
+    g_log:log(#to_delete .. " records to delete", "INFO")
+    g_log:log("To delete: " .. json.encode(to_delete), "DEBUG")
+    g_log:log(#to_add .. " records to add", "INFO")
+    g_log:log("To add: " .. json.encode(to_add), "DEBUG")
+
+    -- 删除多余的dns记录
+    ps_ins.delete_dns_record(to_delete, zone_id)
+
+    -- 添加新的dns记录
+    ps_ins.create_dns_record(to_add, zone_id)
+end
+
+-- 处理配置文件中的每一个配置
+local function processe_conf(config)
     g_log:log("Processing conf " .. config.name, "INFO")
     if processer[config.provider] then
         local ps_ins = processer[config.provider](config)
         if ps_ins == nil then
             g_log:log("Failed to initialize instance for " .. config.name, "ERROR")
-            goto g_continue
+            return
         end
 
         -- 获取zone_id
@@ -61,74 +122,20 @@ for _, config in ipairs(conf.confs) do
             return
         end
 
-        code = nil
-        err = nil
-
         -- 处理配置中每一个子域名
         for _, sub in ipairs(config.subs) do
-            g_log:log("Processing sub domain " .. sub.sub_domain, "INFO")
-            -- 获取现有的dns记录
-            local recordlist, code, err = ps_ins.get_dns_records(sub.sub_domain .. "." .. config.domain, zone_id)
-            if recordlist == nil then
-                g_log:log(
-                    "Failed to get dns records for " ..
-                    config.name .. " " .. sub.sub_domain .. ": " .. code .. " " .. err,
-                    "ERROR")
-                goto sub_continue
-            end
-            code = nil
-            err = nil
-            g_log:log("Got dns record with lenth " .. #recordlist, "INFO")
-            if #recordlist ~= 0 then
-                g_log:log("those dns records are " .. json.encode(recordlist), "DEBUG")
-            end
-
-            -- 获取新的dns记录
-            local new_recordlist = dnsrecord.new_recordlist()
-            for _, ip_setting in ipairs(sub.ip_list) do
-                local ip_list, code, err = getip(ip_setting.method, ip_setting.content)
-                if ip_list == nil then
-                    g_log:log(
-                        "Failed to get IP for " .. config.name .. " " .. sub.sub_domain .. " with code " .. code ..
-                        " error " .. err, "ERROR")
-                    goto getip_continue
-                end
-                code = nil
-                err = nil
-                g_log:log("Got " .. #ip_list .. " IPs with " .. ip_setting.method .. " " .. ip_setting.content, "INFO")
-                if #ip_list ~= 0 then
-                    g_log:log("those IPs are " .. table.concat(ip_list, ", "), "DEBUG")
-                end
-                for _, ip in ipairs(ip_list) do
-                    new_recordlist = new_recordlist .. dnsrecord.new_dnsrecord {
-                        rr = sub.sub_domain,
-                        domain = config.domain,
-                        type = ip_setting.type,
-                        value = ip,
-                        ttl = 1
-                    }
-                end
-                ::getip_continue::
-            end
-
-            -- 比较现有的dns记录和新的dns记录
-            local to_delete = recordlist - new_recordlist
-            local to_add = new_recordlist - recordlist
-            g_log:log(#to_delete .. " records to delete", "INFO")
-            g_log:log("To delete: " .. json.encode(to_delete), "DEBUG")
-            g_log:log(#to_add .. " records to add", "INFO")
-            g_log:log("To add: " .. json.encode(to_add), "DEBUG")
-
-            -- 删除多余的dns记录
-            ps_ins.delete_dns_record(to_delete, zone_id)
-
-            -- 添加新的dns记录
-            ps_ins.create_dns_record(to_add, zone_id)
-            ::sub_continue::
+            processe_sub(config, ps_ins, zone_id, sub)
         end
     else
         g_log:log("Unknown provider " .. config.provider, "ERROR")
     end
-    ::g_continue::
+end
+
+
+-- Main Loop
+-- 遍历配置文件中每一个配置
+g_log:log("Start processing", "INFO")
+for _, config in ipairs(conf.confs) do
+    processe_conf(config)
 end
 g_log:log("End processing", "INFO")
