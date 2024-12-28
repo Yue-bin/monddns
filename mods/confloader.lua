@@ -12,7 +12,7 @@ local support_format = {
 
 local preset_conf_path = {
     "./config.{format}",
-    "~/.config/{name}/config.{format}",
+    os.getenv("HOME") .. "/.config/{name}/config.{format}",
     "/usr/local/etc/{name}/config.{format}",
     "/etc/{name}/config.{format}",
 }
@@ -41,6 +41,9 @@ local function search_conf(name)
         for _, format in ipairs(support_format) do
             local conf_path = string.gsub(path, "{name}", name)
             conf_path = string.gsub(conf_path, "{format}", format)
+            if is_rel_path(conf_path) then
+                conf_path = PATH .. conf_path
+            end
             if test_file(conf_path) then
                 return conf_path, format
             end

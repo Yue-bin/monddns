@@ -3,16 +3,19 @@
 
 -- monddns.lua
 
+function is_rel_path(path)
+    return not string.match(path, "^/")
+end
+
 -- 提供相对require的能力
-local path = string.match(arg[0], "^(.+)/[^/]+$") .. "/"
+PATH = string.match(arg[0], "^(.+)/[^/]+$") .. "/"
 -- 判断是否为绝对路径
-if not string.match(path, "^/") then
-    path = os.getenv("PWD") .. "/" .. path
+if is_rel_path(PATH) then
+    PATH = os.getenv("PWD") .. "/" .. PATH
 end
 local lsep = package.path:find '^;' and '' or ';'
 local csep = package.cpath:find '^;' and '' or ';'
-package.path = ('%s?.lua;%s?%sinit.lua%s%s'):format(path, path, "/", lsep, package.path)
-package.cpath = ('%s?.%s%s'):format(path, csep, package.cpath)
+package.path = ('%s?.lua;%s'):format(PATH, package.path)
 
 local log = require("mods/log")
 local dnsrecord = require("mods/dnsrecord")
@@ -25,7 +28,11 @@ if conf == nil then
     print("Failed to load configuration")
     os.exit(1)
 end
-local log_file = io.open(conf.log.path, "a")
+local log_path = conf.log.path
+if is_rel_path(log_path) then
+    log_path = PATH .. log_path
+end
+local log_file = io.open(log_path, "a")
 local g_log = log.init(log_file)
 g_log:setlevel(conf.log.level or "INFO")
 
