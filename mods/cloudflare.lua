@@ -1,3 +1,4 @@
+---@diagnostic disable: need-check-nil
 --[[
     cloudflare的ddns相关的部分api
     设计上一个实例关联一个token或者email+api_key
@@ -109,12 +110,13 @@ function _M.get_zone_id(domain_name)
 end
 
 -- 获取dns记录
-function _M.get_dns_records(name, zone_id, match_opt)
+function _M.get_dns_records(rr, domain, zone_id, match_opt)
     match_opt = match_opt or "exact"
     local resp_body, code, err = cf_request({
         -- /zones/{zone_id}/dns_records
         url = base_url ..
-            "/zones/" .. zone_id .. "/dns_records?name%2e" .. url.escape(match_opt) .. "=" .. url.escape(name),
+            "/zones/" .. zone_id .. "/dns_records?name%2e" .. url.escape(match_opt) .. "=" .. url.escape(rr ..
+            "." .. domain),
         method = "GET"
     })
     if not resp_body then
@@ -126,25 +128,6 @@ function _M.get_dns_records(name, zone_id, match_opt)
             result = result .. cfrecord_to_dnsrecord(v)
         end
         return result
-    end
-end
-
--- 更新dns记录
-function _M.update_dns_record(recordlist, zone_id)
-    for _, dr in ipairs(recordlist) do
-        -- /zones/{zone_id}/dns_records/{dns_record_id}
-        local result, code, err = cf_request {
-            url = base_url .. "/zones/" .. zone_id .. "/dns_records/" .. dr.id,
-            method = "PATCH",
-            source = ltn12.source.string(json.encode(dnsrecord_to_cfrecord(dr)))
-        }
-        if result then
-            cf_log("update dns record " .. dr.value .. " " .. dr.rr .. "." .. dr.domain .. " success", "INFO")
-        else
-            cf_log(
-                "update dns record " .. dr.value .. " " .. dr.rr .. "." .. dr.domain .. " failed: " .. code .. " " .. err,
-                "ERROR")
-        end
     end
 end
 

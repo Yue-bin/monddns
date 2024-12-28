@@ -39,6 +39,7 @@ g_log:setlevel(conf.log.level or "INFO")
 -- 服务商实例工厂，根据给定的provider返回对应的实例
 -- 要求每个provider的实例都有get_zone_id, get_dns_records, delete_dns_record, create_dns_record方法
 -- 且这些方法的参数和返回值都是一致的
+-- 不存在zoneid概念的服务商固定返回"none"
 local processer = {
 }
 -- cloudflare
@@ -89,7 +90,7 @@ end
 local function processe_sub(config, ps_ins, zone_id, sub)
     g_log:log("Processing sub domain " .. sub.sub_domain, "INFO")
     -- 获取现有的dns记录
-    local recordlist, code, err = ps_ins.get_dns_records(sub.sub_domain .. "." .. config.domain, zone_id)
+    local recordlist, code, err = ps_ins.get_dns_records(sub.sub_domain, config.domain, zone_id)
     if recordlist == nil then
         g_log:log(
             "Failed to get dns records for " ..

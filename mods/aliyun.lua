@@ -1,6 +1,9 @@
+---@diagnostic disable: need-check-nil
 --[[
     aliyun的ddns相关的部分api
     设计上一个实例关联一个ak和ak secret
+
+    此模块尚未开始编写
 --]]
 local _M = {}
 local base = _G
