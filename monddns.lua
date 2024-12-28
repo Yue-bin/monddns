@@ -4,10 +4,10 @@
 -- monddns.lua
 
 -- 提供相对require的能力
-local path = string.match(arg[0], "^(.+)/[^/]+$")
+local path = string.match(arg[0], "^(.+)/[^/]+$") .. "/"
 -- 判断是否为绝对路径
-if not string.match(path, "^(/)*") then
-    path = os.getenv("PWD") .. "/" .. path .. "/"
+if not string.match(path, "^/") then
+    path = os.getenv("PWD") .. "/" .. path
 end
 local lsep = package.path:find '^;' and '' or ';'
 local csep = package.cpath:find '^;' and '' or ';'
