@@ -61,6 +61,23 @@ function processer.cloudflare(config)
     return cf_ins
 end
 
+--namesilo
+function processer.namesilo(config)
+    -- 初始化
+    local ns = require("mods/namesilo")
+    local ns_ins, ns_err = ns.new {
+        auth = {
+            apikey = config.auth.apikey,
+        },
+        log = g_log,
+    }
+    if ns_ins == nil then
+        g_log:log("Failed to initialize namesilo instance for " .. config.name .. ": " .. ns_err, "ERROR")
+        return nil
+    end
+    return ns_ins
+end
+
 -- 从主循环拆出来的子函数，用于避免goto
 -- 获取新记录列表
 local function get_new_rl(config, sub, ip_setting, new_recordlist)

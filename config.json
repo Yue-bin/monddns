@@ -1,19 +1,10 @@
 {
-    "log": {
-        "path": "/var/log/monddns.log",
-        "level": "trace"
-    },
     "confs": [
         {
             "name": "test_cf",
-            "domain": "example.com",
             "provider": "cloudflare",
-            "auth": {
-                "api_token": "api token"
-            },
             "subs": [
                 {
-                    "sub_domain": "test",
                     "ip_list": [
                         {
                             "type": "A",
@@ -35,39 +26,68 @@
                             "method": "url",
                             "content": "https://v6.ident.me"
                         }
-                    ]
+                    ],
+                    "sub_domain": "test"
                 },
                 {
-                    "sub_domain": "v4.test",
                     "ip_list": [
                         {
                             "type": "A",
                             "method": "url",
                             "content": "https://v4.ident.me"
                         }
-                    ]
+                    ],
+                    "sub_domain": "v4.test"
                 },
                 {
-                    "sub_domain": "lan.test",
                     "ip_list": [
                         {
                             "type": "A",
                             "method": "cmd",
-                            "content": "ip -4 addr show | grep -oP '(?<=inet\\s)\\d+(\\.\\d+){3}' | grep -v '^127\\.' | head -n 1"
+                            "content": "ip -4 addr show | grep -oP '(?<=inets)d+(.d+){3}' | grep -v '^127.' | head -n 1"
                         }
-                    ]
+                    ],
+                    "sub_domain": "lan.test"
                 },
                 {
-                    "sub_domain": "static.test",
                     "ip_list": [
                         {
                             "type": "A",
                             "method": "static",
                             "content": "8.8.8.8"
                         }
-                    ]
+                    ],
+                    "sub_domain": "static.test"
                 }
-            ]
+            ],
+            "domain": "example.com",
+            "auth": {
+                "api_token": "api token"
+            }
+        },
+        {
+            "name": "test_ns",
+            "provider": "namesilo",
+            "subs": [
+                {
+                    "ip_list": [
+                        {
+                            "type": "A",
+                            "method": "static",
+                            "content": "8.8.8.8"
+                        }
+                    ],
+                    "sub_domain": "test"
+                }
+            ],
+            "domain": "example.com",
+            "auth": {
+                "apikey": "your api key"
+            }
         }
-    ]
+    ],
+    "log": {
+        "path": "/var/log/monddns.log",
+        "level": "info"
+    }
 }

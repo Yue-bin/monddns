@@ -43,10 +43,6 @@ end
 local function ns_request(opration, query_param)
     query_param = query_param or {}
     local req_url = base_url .. opration .. "?" .. build_query_string(query_param)
-    print(req_url)
-    do
-        return
-    end
     local resp_body, code, headers, status = http.request(req_url)
     -- 判断http状态码是否为2xx, 以及返回的body里的code是否为3xx
     if code >= 200 and code < 300 then

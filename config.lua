@@ -1,7 +1,7 @@
 config = {
 
     log = {
-        level = "trace",
+        level = "info",
         path = "/var/log/monddns.log",
     },
     confs = {
@@ -71,5 +71,25 @@ config = {
                 }
             },
         },
-    }
+        {
+            name = "test_ns",
+            domain = "example.com",
+            provider = "namesilo",
+            auth = {
+                apikey = "your api key",
+            },
+            subs = {
+                {
+                    sub_domain = "test",
+                    ip_list = {
+                        {
+                            type = "A",
+                            method = "static",
+                            content = "8.8.8.8",
+                        },
+                    },
+                },
+            },
+        },
+    },
 }
