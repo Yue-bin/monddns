@@ -1,4 +1,4 @@
-#!/usr/bin/env lua5.4
+#!/usr/bin/env lua
 ---@diagnostic disable: different-requires
 
 -- monddns.lua
