@@ -2,7 +2,18 @@
 ---@diagnostic disable: different-requires
 
 -- monddns.lua
--- A simple dynamic DNS script
+
+-- 提供相对require的能力
+local path = string.match(arg[0], "^(.+)/[^/]+$")
+-- 判断是否为绝对路径
+if not string.match(path, "^(/)*") then
+    path = os.getenv("PWD") .. "/" .. path .. "/"
+end
+local lsep = package.path:find '^;' and '' or ';'
+local csep = package.cpath:find '^;' and '' or ';'
+package.path = ('%s?.lua;%s?%sinit.lua%s%s'):format(path, path, "/", lsep, package.path)
+package.cpath = ('%s?.%s%s'):format(path, csep, package.cpath)
+
 local log = require("mods/log")
 local dnsrecord = require("mods/dnsrecord")
 local json = require("cjson")
