@@ -1,4 +1,3 @@
----@diagnostic disable: need-check-nil
 --[[
     aliyun的ddns相关的部分api
     设计上一个实例关联一个ak和ak secret
@@ -6,15 +5,13 @@
     此模块尚未开始编写
 --]]
 local _M = {}
-local base = _G
 
-local url = base.require("socket.url")
-local http = base.require("socket.http")
-local ltn12 = base.require("ltn12")
-local json = base.require("cjson")
-local hmac = base.require("openssl.hmac")
-local dnsrecord = base.require("mods.dnsrecord")
-local basexx = base.require("basexx")
+local http = require("socket.http")
+local ltn12 = require("ltn12")
+local json = require("cjson")
+local hmac = require("openssl.hmac")
+local dnsrecord = require("mods.dnsrecord")
+local basexx = require("basexx")
 
 local log = nil
 local req_headers = {
@@ -96,14 +93,14 @@ local _SIGN_VER = "1.0"
 -- 生成公共请求参数
 -- 不包含signature，需要在生成签名之后加入
 local function gen_pub_params(action)
-    base.math.randomseed(base.os.time())
+    math.randomseed(os.time())
     local pub_params = {
         Action = action,
         Version = _API_VER,
         Format = _FORMAT,
         AccessKeyId = ak_id,
-        SignatureNonce = base.tostring(base.math.random(1000000000, 9999999999)),
-        Timestamp = base.os.date("!%Y-%m-%dT%H:%M:%SZ"),
+        SignatureNonce = tostring(math.random(1000000000, 9999999999)),
+        Timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
         SignatureMethod = _SIGN_METHOD,
         SignatureVersion = _SIGN_VER,
     }
@@ -114,7 +111,7 @@ end
 local function to_ordered(params)
     local ordered = {}
     for k, v in pairs(params) do
-        base.table.insert(ordered, { key = k, value = v })
+        table.insert(ordered, { key = k, value = v })
     end
     table.sort(ordered, function(a, b)
         return a.key < b.key
@@ -160,12 +157,12 @@ local function ali_request(action, params)
     }
     -- 判断状态码是否为2xx
     if code >= 200 and code < 300 then
-        ali_log("request success with code " .. code .. ", body " .. base.table.concat(resp_body), "DEBUG")
-        return json.decode(base.table.concat(resp_body)), code
+        ali_log("request success with code " .. code .. ", body " .. table.concat(resp_body), "DEBUG")
+        return json.decode(table.concat(resp_body)), code
     else
-        if base.next(resp_body) then
-            ali_log("request failed with code " .. code .. ", body " .. base.table.concat(resp_body), "DEBUG")
-            return nil, code, json.decode(base.table.concat(resp_body))
+        if next(resp_body) then
+            ali_log("request failed with code " .. code .. ", body " .. table.concat(resp_body), "DEBUG")
+            return nil, code, json.decode(table.concat(resp_body))
         end
         ali_log("request failed with code " .. code, "DEBUG")
         return nil, code
@@ -189,7 +186,7 @@ end
 local function alirecord_to_dnsrecord(ali_dr)
     local dr = dnsrecord.new_dnsrecord {
         id = ali_dr.id,
-        rr = base.string.gsub(ali_dr.name, "." .. ali_dr.zone_name, ""),
+        rr = string.gsub(ali_dr.name, "." .. ali_dr.zone_name, ""),
         domain = ali_dr.zone_name,
         type = ali_dr.type,
         value = ali_dr.content,

@@ -1,5 +1,4 @@
 local _M = {}
-local base = _G
 
 -- 日志相关
 -- 搬了一点monlog
@@ -22,11 +21,11 @@ _M.outputstream = nil
 
 -- 设置日志级别
 function _M:setlevel(level)
-    level = base.string.upper(level)
+    level = string.upper(level)
     if loglevels[level] ~= nil then
         _M.LOG_LEVEL = level
     else
-        base.error("log level \"" .. level .. "\" is invalid")
+        error("log level \"" .. level .. "\" is invalid")
     end
 end
 
@@ -37,13 +36,13 @@ function _M:log(msg, level)
     level = level or "INFO"
     if loglevels[level] >= loglevels[_M.LOG_LEVEL] then
         -- 使用outputstream输出日志
-        self.outputstream:write(base.os.date("%Y.%m.%d-%H:%M:%S"), " [", level, "] ", msg, "\n")
+        self.outputstream:write(os.date("%Y.%m.%d-%H:%M:%S"), " [", level, "] ", msg, "\n")
     end
 end
 
 -- 初始化
 local function init(stream)
-    _M.outputstream = stream or base.io.stderr
+    _M.outputstream = stream or io.stderr
     return _M
 end
 

@@ -1,4 +1,3 @@
----@diagnostic disable: need-check-nil
 --[[
     namesilo的ddns相关的部分api
     设计上一个实例关联一个apikey
@@ -6,12 +5,10 @@
     此模块尚未经过实际测试
 --]]
 local _M = {}
-local base = _G
 
-local http = base.require("socket.http")
-local ltn12 = base.require("ltn12")
-local json = base.require("cjson")
-local dnsrecord = base.require("mods.dnsrecord")
+local http = require("socket.http")
+local json = require("cjson")
+local dnsrecord = require("mods.dnsrecord")
 
 
 local base_url = "https://www.namesilo.com/api/"
@@ -46,15 +43,15 @@ local function ns_request(opration, query_param)
     local resp_body, code, headers, status = http.request(req_url)
     -- 判断http状态码是否为2xx, 以及返回的body里的code是否为3xx
     if code >= 200 and code < 300 then
-        ns_log("request success with code " .. code .. ", body " .. base.table.concat(resp_body), "TRACE")
-        if base.next(resp_body) and json.decode(base.table.concat(resp_body)) and json.decode(base.table.concat(resp_body)).reply.code >= 300 and json.decode(base.table.concat(resp_body)).reply.code < 400 then
-            return json.decode(base.table.concat(resp_body))
+        ns_log("request success with code " .. code .. ", body " .. table.concat(resp_body), "TRACE")
+        if next(resp_body) and json.decode(table.concat(resp_body)) and json.decode(table.concat(resp_body)).reply.code >= 300 and json.decode(table.concat(resp_body)).reply.code < 400 then
+            return json.decode(table.concat(resp_body))
         end
-        return nil, code, json.decode(base.table.concat(resp_body))
+        return nil, code, json.decode(table.concat(resp_body))
     else
-        if base.next(resp_body) then
-            ns_log("request failed with code " .. code .. ", body " .. base.table.concat(resp_body), "TRACE")
-            return nil, code, base.table.concat(resp_body)
+        if next(resp_body) then
+            ns_log("request failed with code " .. code .. ", body " .. table.concat(resp_body), "TRACE")
+            return nil, code, table.concat(resp_body)
         end
         ns_log("request failed with code " .. code, "TRACE")
         return nil, code, ""
@@ -78,8 +75,8 @@ end
 local function nsrecord_to_dnsrecord(ns_dr)
     local dr = dnsrecord.new_dnsrecord {
         id = ns_dr.record_id,
-        rr = base.string.match(ns_dr.host, "(.+)%.[^%.]+%.[^%.]+$"),
-        domain = base.string.match(ns_dr.host, "[^%.]+%.[^%.]+$"),
+        rr = string.match(ns_dr.host, "(.+)%.[^%.]+%.[^%.]+$"),
+        domain = string.match(ns_dr.host, "[^%.]+%.[^%.]+$"),
         type = ns_dr.type,
         value = ns_dr.value,
         ttl = ns_dr.ttl,

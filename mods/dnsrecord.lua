@@ -2,8 +2,6 @@
     此处定义dnsrecord类型和recordlist类型
 --]]
 
-local base = _G
-
 -- dnsrecord类型
 -- 示例:web.example.com
 local dnsrecord = {
@@ -31,7 +29,7 @@ local dnsrecord_mt = {
     end,
     __eq = dnsrecord_equal,
 }
-base.setmetatable(dnsrecord, dnsrecord_mt)
+setmetatable(dnsrecord, dnsrecord_mt)
 
 local function new_dr(dr)
     local new_dr_obj = {
@@ -42,7 +40,7 @@ local function new_dr(dr)
         value = dr.value or "",
         ttl = dr.ttl or 1
     }
-    base.setmetatable(new_dr_obj, dnsrecord_mt)
+    setmetatable(new_dr_obj, dnsrecord_mt)
     return new_dr_obj
 end
 
@@ -130,11 +128,11 @@ local recordlist_mt = {
     __sub = recordlist_sub,
     __add = recordlist_merge,
 }
-base.setmetatable(recordlist, recordlist_mt)
+setmetatable(recordlist, recordlist_mt)
 
 local function new_rl()
     local new_rl_obj = {}
-    base.setmetatable(new_rl_obj, recordlist_mt)
+    setmetatable(new_rl_obj, recordlist_mt)
     return new_rl_obj
 end
 

@@ -1,17 +1,15 @@
----@diagnostic disable: need-check-nil
 --[[
     cloudflare的ddns相关的部分api
     设计上一个实例关联一个token或者email+api_key
     具体的zone_id在运行时维护
 --]]
 local _M = {}
-local base = _G
 
-local url = base.require("socket.url")
-local http = base.require("socket.http")
-local ltn12 = base.require("ltn12")
-local json = base.require("cjson")
-local dnsrecord = base.require("mods.dnsrecord")
+local url = require("socket.url")
+local http = require("socket.http")
+local ltn12 = require("ltn12")
+local json = require("cjson")
+local dnsrecord = require("mods.dnsrecord")
 
 
 local base_url = "https://api.cloudflare.com/client/v4"
@@ -34,16 +32,16 @@ local function cf_request(reqt)
     ---@diagnostic disable-next-line: need-check-nil, undefined-field
     if log.LOG_LEVEL == "TRACE" then
         local reqt_dump = {}
-        for k, v in base.pairs(reqt) do
+        for k, v in pairs(reqt) do
             if k == "source" then
                 local result = {}
                 local sink = ltn12.sink.table(result)
                 -- 使用 ltn12.pump.all 从 source 提取数据到 result
                 local success, err = ltn12.pump.all(v, sink)
                 if not success then
-                    cf_log("Failed to extract data from source: " .. base.tostring(err), "TRACE")
+                    cf_log("Failed to extract data from source: " .. tostring(err), "TRACE")
                 end
-                reqt_dump.source = base.table.concat(result)
+                reqt_dump.source = table.concat(result)
                 -- 重建source
                 reqt.source = ltn12.source.string(reqt_dump.source)
             elseif k == "sink" then
@@ -57,12 +55,12 @@ local function cf_request(reqt)
     local _, code, headers, status = http.request(reqt)
     -- 判断状态码是否为2xx
     if code >= 200 and code < 300 then
-        cf_log("request success with code " .. code .. ", body " .. base.table.concat(resp_body), "TRACE")
-        return json.decode(base.table.concat(resp_body))
+        cf_log("request success with code " .. code .. ", body " .. table.concat(resp_body), "TRACE")
+        return json.decode(table.concat(resp_body))
     else
-        if base.next(resp_body) then
-            cf_log("request failed with code " .. code .. ", body " .. base.table.concat(resp_body), "TRACE")
-            return nil, code, base.table.concat(resp_body)
+        if next(resp_body) then
+            cf_log("request failed with code " .. code .. ", body " .. table.concat(resp_body), "TRACE")
+            return nil, code, table.concat(resp_body)
         end
         cf_log("request failed with code " .. code, "TRACE")
         return nil, code, ""
@@ -86,7 +84,7 @@ end
 local function cfrecord_to_dnsrecord(cf_dr)
     local dr = dnsrecord.new_dnsrecord {
         id = cf_dr.id,
-        rr = base.string.gsub(cf_dr.name, "." .. cf_dr.zone_name, ""),
+        rr = string.gsub(cf_dr.name, "." .. cf_dr.zone_name, ""),
         domain = cf_dr.zone_name,
         type = cf_dr.type,
         value = cf_dr.content,

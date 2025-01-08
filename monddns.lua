@@ -13,8 +13,6 @@ PATH = string.match(arg[0], "^(.+)/[^/]+$") .. "/"
 if is_rel_path(PATH) then
     PATH = os.getenv("PWD") .. "/" .. PATH
 end
-local lsep = package.path:find '^;' and '' or ';'
-local csep = package.cpath:find '^;' and '' or ';'
 package.path = ('%s?.lua;%s'):format(PATH, package.path)
 
 local log = require("mods/log")
