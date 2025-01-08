@@ -57,12 +57,12 @@ local function cf_request(reqt)
     local _, code, headers, status = http.request(reqt)
     -- 判断状态码是否为2xx
     if code >= 200 and code < 300 then
-        cf_log("request success with code " .. code .. ", body " .. resp_body[1], "TRACE")
-        return json.decode(resp_body[1])
+        cf_log("request success with code " .. code .. ", body " .. base.table.concat(resp_body), "TRACE")
+        return json.decode(base.table.concat(resp_body))
     else
-        if resp_body then
-            cf_log("request failed with code " .. code .. ", body " .. resp_body[1], "TRACE")
-            return nil, code, resp_body[1]
+        if base.next(resp_body) then
+            cf_log("request failed with code " .. code .. ", body " .. base.table.concat(resp_body), "TRACE")
+            return nil, code, base.table.concat(resp_body)
         end
         cf_log("request failed with code " .. code, "TRACE")
         return nil, code, ""

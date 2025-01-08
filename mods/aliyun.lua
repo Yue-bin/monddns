@@ -174,12 +174,12 @@ local function ali_request(action, params)
     }
     -- 判断状态码是否为2xx
     if code >= 200 and code < 300 then
-        ali_log("request success with code " .. code .. ", body " .. resp_body[1], "DEBUG")
+        ali_log("request success with code " .. code .. ", body " .. base.table.concat(resp_body), "DEBUG")
         return json.decode(base.table.concat(resp_body)), code
     else
-        if resp_body then
-            ali_log("request failed with code " .. code .. ", body " .. resp_body[1], "DEBUG")
-            return nil, code, json.decode(resp_body[1])
+        if base.next(resp_body) then
+            ali_log("request failed with code " .. code .. ", body " .. base.table.concat(resp_body), "DEBUG")
+            return nil, code, json.decode(base.table.concat(resp_body))
         end
         ali_log("request failed with code " .. code, "DEBUG")
         return nil, code

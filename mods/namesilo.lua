@@ -46,15 +46,15 @@ local function ns_request(opration, query_param)
     local resp_body, code, headers, status = http.request(req_url)
     -- 判断http状态码是否为2xx, 以及返回的body里的code是否为3xx
     if code >= 200 and code < 300 then
-        ns_log("request success with code " .. code .. ", body " .. resp_body[1], "TRACE")
-        if resp_body and json.decode(resp_body[1]) and json.decode(resp_body[1]).reply.code >= 300 and json.decode(resp_body[1]).reply.code < 400 then
-            return json.decode(resp_body[1])
+        ns_log("request success with code " .. code .. ", body " .. base.table.concat(resp_body), "TRACE")
+        if base.next(resp_body) and json.decode(base.table.concat(resp_body)) and json.decode(base.table.concat(resp_body)).reply.code >= 300 and json.decode(base.table.concat(resp_body)).reply.code < 400 then
+            return json.decode(base.table.concat(resp_body))
         end
-        return nil, code, json.decode(resp_body[1])
+        return nil, code, json.decode(base.table.concat(resp_body))
     else
-        if resp_body then
-            ns_log("request failed with code " .. code .. ", body " .. resp_body[1], "TRACE")
-            return nil, code, resp_body[1]
+        if base.next(resp_body) then
+            ns_log("request failed with code " .. code .. ", body " .. base.table.concat(resp_body), "TRACE")
+            return nil, code, base.table.concat(resp_body)
         end
         ns_log("request failed with code " .. code, "TRACE")
         return nil, code, ""
