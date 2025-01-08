@@ -11,7 +11,7 @@ local support_format = {
 }
 
 local preset_conf_path = {
-    "./config.{format}",
+    "config.{format}",
     os.getenv("HOME") .. "/.config/{name}/config.{format}",
     "/usr/local/etc/{name}/config.{format}",
     "/etc/{name}/config.{format}",
