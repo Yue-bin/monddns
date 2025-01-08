@@ -116,7 +116,7 @@ function _M.get_dns_records(rr, domain, zone_id, match_opt)
         -- /zones/{zone_id}/dns_records
         url = base_url ..
             "/zones/" .. zone_id .. "/dns_records?name%2e" .. url.escape(match_opt) .. "=" .. url.escape(rr ..
-            "." .. domain),
+                "." .. domain),
         method = "GET"
     })
     if not resp_body then
@@ -172,7 +172,8 @@ end
 function _M.new(init_info)
     if not init_info.auth then
         return nil, "missing auth"
-    elseif init_info.auth.api_token then
+    end
+    if init_info.auth.api_token then
         req_headers["Authorization"] = "Bearer " .. init_info.auth.api_token
     elseif init_info.auth.email and init_info.auth.api_key then
         req_headers["X-Auth-Email"] = init_info.auth.email

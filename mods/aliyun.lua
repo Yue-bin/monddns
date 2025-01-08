@@ -20,6 +20,12 @@ local req_headers = {
     ["Content-Type"] = "application/x-www-form-urlencoded",
 }
 
+-- 在log前面加上模块名
+local function ali_log(msg, level)
+    ---@diagnostic disable-next-line: need-check-nil, undefined-field
+    log:log("<aliyun> " .. msg, level)
+end
+
 local function build_query_string(query_param)
     local parts = {}
     for k, v in pairs(query_param) do
@@ -162,7 +168,8 @@ ali_request({})
 function _M.new(init_info)
     if not init_info.auth then
         return nil, "missing auth"
-    elseif init_info.auth.ak_id and init_info.auth.ak_secret then
+    end
+    if init_info.auth.ak_id and init_info.auth.ak_secret then
         ak_id = init_info.auth.ak_id
         ak_secret = init_info.auth.ak_secret
     else

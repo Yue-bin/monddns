@@ -141,7 +141,14 @@ function _M.create_dns_record(recordlist, zone_id)
 end
 
 function _M.new(init_info)
-    base_query_param.key = init_info.auth.apikey
+    if not init_info.auth then
+        return nil, "missing auth"
+    end
+    if init_info.auth.apikey then
+        base_query_param.key = init_info.auth.apikey
+    else
+        return nil, "invalid auth type"
+    end
     log = init_info.log or require("mods.log").init()
     return _M
 end
