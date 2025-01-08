@@ -45,23 +45,9 @@ local function url_encode(input)
         end
     end
 
-    -- UTF-8 编码辅助函数
-    local function utf8_encode(char)
-        local byte = string.byte(char)
-        if byte < 128 then
-            return encode_char(char)
-        else
-            local bytes = { byte }
-            for i = 2, #char do
-                table.insert(bytes, string.byte(char, i))
-            end
-            return table.concat(vim.tbl_map(function(b) return string.format("%%%02X", b):upper() end, bytes))
-        end
-    end
-
     -- 调整匹配模式，兼容 Lua 5.1
     return input:gsub("[^%w%-%.%_%~ ]", function(char)
-        return utf8_encode(char)
+        return encode_char(char)
     end):gsub(" ", "%%20") -- 替换空格为%20
 end
 
