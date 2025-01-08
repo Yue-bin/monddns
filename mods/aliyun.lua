@@ -14,6 +14,7 @@ local ltn12 = base.require("ltn12")
 local json = base.require("cjson")
 local hmac = base.require("openssl.hmac")
 local dnsrecord = base.require("mods.dnsrecord")
+local basexx = base.require("basexx")
 
 local log = nil
 local req_headers = {
@@ -26,20 +27,71 @@ local function ali_log(msg, level)
     log:log("<aliyun> " .. msg, level)
 end
 
-local function build_query_string(query_param)
+-- 拜阿里所赐，我需要实现一个使用大写字母十六进制编码的urlencode
+local function url_encode(input)
+    -- 保留不需要编码的字符
+    local safe_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.~"
+
+    local function encode_char(char)
+        local byte = string.byte(char)
+        -- 对 ASCII 范围字符进行处理
+        if safe_chars:find(char, 1, true) then
+            return char
+        elseif byte == 32 then -- 空格转为%20
+            return "%20"
+        else
+            -- 非安全字符用%加16进制表示
+            return string.format("%%%02X", byte):upper()
+        end
+    end
+
+    -- UTF-8 编码辅助函数
+    local function utf8_encode(char)
+        local byte = string.byte(char)
+        if byte < 128 then
+            return encode_char(char)
+        else
+            local bytes = { byte }
+            for i = 2, #char do
+                table.insert(bytes, string.byte(char, i))
+            end
+            return table.concat(vim.tbl_map(function(b) return string.format("%%%02X", b):upper() end, bytes))
+        end
+    end
+
+    -- 调整匹配模式，兼容 Lua 5.1
+    return input:gsub("[^%w%-%.%_%~ ]", function(char)
+        return utf8_encode(char)
+    end):gsub(" ", "%%20") -- 替换空格为%20
+end
+
+-- encode不为nil则进行urlencode
+local function build_query_string(query_param, encode)
+    local urlencode = function(tmp)
+        return tmp
+    end
+    if encode then
+        urlencode = url_encode
+    end
     local parts = {}
     for k, v in pairs(query_param) do
-        table.insert(parts, k .. "=" .. v)
+        table.insert(parts, urlencode(k) .. "=" .. urlencode(v))
     end
     return table.concat(parts, "&")
 end
 
-local function tohex(b)
-    local x = ""
-    for i = 1, #b do
-        x = x .. string.format("%.2x", string.byte(b, i))
+local function build_query_string_ordered(query_param, encode)
+    local urlencode = function(tmp)
+        return tmp
     end
-    return x
+    if encode then
+        urlencode = url_encode
+    end
+    local parts = {}
+    for _, param in pairs(query_param) do
+        table.insert(parts, urlencode(param.key) .. "=" .. urlencode(param.value))
+    end
+    return table.concat(parts, "&")
 end
 
 -- 阿里签名相关，此处仅实现v2 rpc风格 post方法 的签名(我查过元数据了我需要的几个方法都支持get和post)
@@ -47,87 +99,83 @@ local ak_id = ""
 local ak_secret = ""
 
 -- 一些固定值
-local procto = "https://"
-local endpoint = "dns.aliyuncs.com"
-local http_method = "POST"
-local api_ver = "2015-01-09"
-local format = "JSON"
-local sign_method = "HMAC-SHA1"
-local sign_ver = "1.0"
+local _PROTO = "https://"
+local _ENDPOINT = "dns.aliyuncs.com"
+local _HTTP_METHOD = "POST"
+local _API_VER = "2015-01-09"
+local _FORMAT = "JSON"
+local _SIGN_METHOD = "HMAC-SHA1"
+local _SIGN_VER = "1.0"
 
 -- 生成公共请求参数
--- 带sign的时候生成sign键，用于最终请求，不带时不生成，用于签名
-local function gen_pub_params(action, sign)
+-- 不包含signature，需要在生成签名之后加入
+local function gen_pub_params(action)
+    base.math.randomseed(base.os.time())
     local pub_params = {
+        Action = action,
+        Version = _API_VER,
+        Format = _FORMAT,
         AccessKeyId = ak_id,
-        Format = format,
-        SignatureMethod = sign_method,
-        SignatureVersion = sign_ver,
+        SignatureNonce = base.tostring(base.math.random(1000000000, 9999999999)),
         Timestamp = base.os.date("!%Y-%m-%dT%H:%M:%SZ"),
-        Version = api_ver,
+        SignatureMethod = _SIGN_METHOD,
+        SignatureVersion = _SIGN_VER,
     }
-    if sign then
-        pub_params.Signature = sign
-    end
     return pub_params
+end
+
+-- 把表转换成有序的形式
+local function to_ordered(params)
+    local ordered = {}
+    for k, v in pairs(params) do
+        base.table.insert(ordered, { key = k, value = v })
+    end
+    table.sort(ordered, function(a, b)
+        return a.key < b.key
+    end)
+    return ordered
 end
 
 -- 生成签名
 local function gen_signature(params)
-    local keys = {}
-    -- 插入自定义参数
-    for k, _ in pairs(params) do
-        base.table.insert(keys, k)
-    end
-    -- 插入公共请求参数(不含signature)
-    for k, _ in pairs(params) do
-        base.table.insert(keys, k)
-    end
-    base.table.sort(keys)
-    local canonicalized_query_string = {}
-    for _, k in pairs(keys) do
-        table.insert(canonicalized_query_string, url.escape(k) .. "=" .. url.escape(params[k]))
-    end
-    local string_to_sign = http_method ..
-        "&" .. url.escape("/") .. "&" .. url.escape(table.concat(canonicalized_query_string, "&"))
-    local key = ak_secret .. "&"
-    local hmac_sha1 = hmac.new(key, "sha1"):final()
+    local ordered_params = to_ordered(params)
+    local canonicalized_query_string = build_query_string_ordered(ordered_params, true)
+    local string_to_sign = _HTTP_METHOD .. "&" .. url_encode("/") .. "&" .. url_encode(canonicalized_query_string)
+    ali_log("string to sign: " .. string_to_sign, "DEBUG")
+    local sign = basexx.to_base64(hmac.new(ak_secret .. "&", "sha1"):final(string_to_sign))
+    return sign
 end
 
 -- 统一处理ali的返回
-local function ali_request(reqt)
-    local sign = gen_signature(reqt)
+local function ali_request(action, params)
+    local pub_params = gen_pub_params(action)
+    local full_params = {}
+    for k, v in pairs(pub_params) do
+        full_params[k] = v
+    end
+    for k, v in pairs(params) do
+        full_params[k] = v
+    end
+    local sign = gen_signature(full_params)
+    local reqt_url = _PROTO ..
+        _ENDPOINT .. "/?" .. build_query_string(pub_params, true) .. "&Signature=" .. url_encode(sign)
     local resp_body = {}
-    reqt.headers = req_headers
-    reqt.sink = ltn12.sink.table(resp_body)
     ---@diagnostic disable-next-line: need-check-nil, undefined-field
     if log.LOG_LEVEL == "DEBUG" then
-        local reqt_dump = {}
-        for k, v in base.pairs(reqt) do
-            if k == "source" then
-                local result = {}
-                local sink = ltn12.sink.table(result)
-                -- 使用 ltn12.pump.all 从 source 提取数据到 result
-                local success, err = ltn12.pump.all(v, sink)
-                if not success then
-                    ali_log("Failed to extract data from source: " .. base.tostring(err), "DEBUG")
-                end
-                reqt_dump.source = base.table.concat(result)
-                -- 重建source
-                reqt.source = ltn12.source.string(reqt_dump.source)
-            elseif k == "sink" then
-                reqt_dump[k] = "sink"
-            else
-                reqt_dump[k] = v
-            end
-        end
-        ali_log("request: " .. json.encode(reqt_dump), "DEBUG")
+        ali_log("request: " .. reqt_url, "DEBUG")
+        ali_log("request params: " .. json.encode(params), "DEBUG")
     end
-    local _, code, headers, status = http.request(reqt)
+    local _, code, headers, status = http.request {
+        url = reqt_url,
+        method = _HTTP_METHOD,
+        headers = req_headers,
+        sink = ltn12.sink.table(resp_body),
+        source = ltn12.source.string(build_query_string(params, true)),
+    }
     -- 判断状态码是否为2xx
     if code >= 200 and code < 300 then
         ali_log("request success with code " .. code .. ", body " .. resp_body[1], "DEBUG")
-        return json.decode(resp_body[1]), code
+        return json.decode(base.table.concat(resp_body)), code
     else
         if resp_body then
             ali_log("request failed with code " .. code .. ", body " .. resp_body[1], "DEBUG")
@@ -163,7 +211,7 @@ local function alirecord_to_dnsrecord(ali_dr)
     return dr
 end
 
-ali_request({})
+_M.ali_request = ali_request
 
 function _M.new(init_info)
     if not init_info.auth then
