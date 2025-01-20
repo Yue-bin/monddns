@@ -1,93 +1,114 @@
 {
-    "confs": [
-        {
-            "name": "test_cf",
-            "provider": "cloudflare",
-            "subs": [
-                {
-                    "ip_list": [
-                        {
-                            "type": "A",
-                            "method": "static",
-                            "content": "8.8.8.8"
-                        },
-                        {
-                            "type": "A",
-                            "method": "url",
-                            "content": "https://v4.ident.me"
-                        },
-                        {
-                            "type": "AAAA",
-                            "method": "static",
-                            "content": "::1"
-                        },
-                        {
-                            "type": "AAAA",
-                            "method": "url",
-                            "content": "https://v6.ident.me"
-                        }
-                    ],
-                    "sub_domain": "test"
-                },
-                {
-                    "ip_list": [
-                        {
-                            "type": "A",
-                            "method": "url",
-                            "content": "https://v4.ident.me"
-                        }
-                    ],
-                    "sub_domain": "v4.test"
-                },
-                {
-                    "ip_list": [
-                        {
-                            "type": "A",
-                            "method": "cmd",
-                            "content": "ip -4 addr show | grep -oP '(?<=inets)d+(.d+){3}' | grep -v '^127.' | head -n 1"
-                        }
-                    ],
-                    "sub_domain": "lan.test"
-                },
-                {
-                    "ip_list": [
-                        {
-                            "type": "A",
-                            "method": "static",
-                            "content": "8.8.8.8"
-                        }
-                    ],
-                    "sub_domain": "static.test"
-                }
-            ],
-            "domain": "example.com",
-            "auth": {
-                "api_token": "api token"
-            }
-        },
-        {
-            "name": "test_ns",
-            "provider": "namesilo",
-            "subs": [
-                {
-                    "ip_list": [
-                        {
-                            "type": "A",
-                            "method": "static",
-                            "content": "8.8.8.8"
-                        }
-                    ],
-                    "sub_domain": "test"
-                }
-            ],
-            "domain": "example.com",
-            "auth": {
-                "apikey": "your api key"
-            }
-        }
-    ],
     "log": {
         "path": "/var/log/monddns.log",
         "level": "info"
-    }
+    },
+    "confs": [
+        {
+            "provider": "cloudflare",
+            "subs": [
+                {
+                    "sub_domain": "test",
+                    "ip_list": [
+                        {
+                            "content": "8.8.8.8",
+                            "method": "static",
+                            "type": "A"
+                        },
+                        {
+                            "content": "https://v4.ident.me",
+                            "method": "url",
+                            "type": "A"
+                        },
+                        {
+                            "content": "::1",
+                            "method": "static",
+                            "type": "AAAA"
+                        },
+                        {
+                            "content": "https://v6.ident.me",
+                            "method": "url",
+                            "type": "AAAA"
+                        }
+                    ]
+                },
+                {
+                    "sub_domain": "v4.test",
+                    "ip_list": [
+                        {
+                            "content": "https://v4.ident.me",
+                            "method": "url",
+                            "type": "A"
+                        }
+                    ]
+                },
+                {
+                    "sub_domain": "lan.test",
+                    "ip_list": [
+                        {
+                            "content": "ip -4 addr show | grep -oP '(?<=inet\\s)\\d+(\\.\\d+){3}' | grep -v '^127\\.' | head -n 1",
+                            "method": "cmd",
+                            "type": "A"
+                        }
+                    ]
+                },
+                {
+                    "sub_domain": "static.test",
+                    "ip_list": [
+                        {
+                            "content": "8.8.8.8",
+                            "method": "static",
+                            "type": "A"
+                        }
+                    ]
+                }
+            ],
+            "auth": {
+                "api_token": "api token"
+            },
+            "domain": "example.com",
+            "name": "test_cf"
+        },
+        {
+            "provider": "namesilo",
+            "subs": [
+                {
+                    "sub_domain": "test",
+                    "ip_list": [
+                        {
+                            "content": "8.8.8.8",
+                            "method": "static",
+                            "type": "A"
+                        }
+                    ]
+                }
+            ],
+            "auth": {
+                "apikey": "your api key"
+            },
+            "domain": "example.com",
+            "name": "test_ns"
+        },
+        {
+            "provider": "aliyun",
+            "subs": [
+                {
+                    "sub_domain": "test",
+                    "ip_list": [
+                        {
+                            "content": "8.8.8.8",
+                            "method": "static",
+                            "type": "A"
+                        }
+                    ]
+                }
+            ],
+            "auth": {
+                "ak_id": "your ak id",
+                "ak_secret": "your ak secret"
+            },
+            "domain": "example.com",
+            "name": "test_ali"
+        }
+    ]
 }

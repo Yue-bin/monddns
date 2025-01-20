@@ -91,5 +91,26 @@ config = {
                 },
             },
         },
+        {
+            name = "test_ali",
+            domain = "example.com",
+            provider = "aliyun",
+            auth = {
+                ak_id = "your ak id",
+                ak_secret = "your ak secret",
+            },
+            subs = {
+                {
+                    sub_domain = "test",
+                    ip_list = {
+                        {
+                            type = "A",
+                            method = "static",
+                            content = "8.8.8.8",
+                        },
+                    },
+                },
+            },
+        },
     },
 }
