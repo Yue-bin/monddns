@@ -76,6 +76,24 @@ function processer.namesilo(config)
     return ns_ins
 end
 
+--aliyun
+function processer.aliyun(config)
+    -- 初始化
+    local ali = require("mods/aliyun")
+    local ali_ins, ali_err = ali.new {
+        auth = {
+            ak_id = config.auth.ak_id,
+            ak_secret = config.auth.ak_secret,
+        },
+        log = g_log,
+    }
+    if ali_ins == nil then
+        g_log:log("Failed to initialize aliyun instance for " .. config.name .. ": " .. ali_err, "ERROR")
+        return nil
+    end
+    return ali_ins
+end
+
 -- 从主循环拆出来的子函数，用于避免goto
 -- 获取新记录列表
 local function get_new_rl(config, sub, ip_setting, new_recordlist)

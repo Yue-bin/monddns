@@ -43,7 +43,7 @@ local function url_encode(input)
     end
 
     -- 调整匹配模式，兼容 Lua 5.1
-    return input:gsub("[^%w%-%.%_%~ ]", function(char)
+    return string.gsub(input, "[^%w%-%.%_%~ ]", function(char)
         return encode_char(char)
     end):gsub(" ", "%%20") -- 替换空格为%20
 end
@@ -90,10 +90,12 @@ local _FORMAT = "JSON"
 local _SIGN_METHOD = "HMAC-SHA1"
 local _SIGN_VER = "1.0"
 
+math.randomseed(os.time())
+
 -- 生成公共请求参数
 -- 不包含signature，需要在生成签名之后加入
 local function gen_pub_params(action)
-    math.randomseed(os.time())
+    -- 防止一秒内签出两个nonce一样的签名
     local pub_params = {
         Action = action,
         Version = _API_VER,
@@ -162,7 +164,7 @@ local function ali_request(action, params)
     else
         if next(resp_body) then
             ali_log("request failed with code " .. code .. ", body " .. table.concat(resp_body), "DEBUG")
-            return nil, code, json.decode(table.concat(resp_body))
+            return nil, code, table.concat(resp_body)
         end
         ali_log("request failed with code " .. code, "DEBUG")
         return nil, code
@@ -172,12 +174,11 @@ end
 -- 将dnsrecord类型转换为cloudflare的record类型
 local function dnsrecord_to_alirecord(dr, comment, is_proxied)
     local ali_dr = {
-        comment = comment or "",
-        content = dr.value,
-        name = dr.rr .. "." .. dr.domain,
-        proxied = is_proxied or false,
-        ttl = dr.ttl,
-        type = dr.type,
+        Value = dr.value,
+        RR = dr.rr,
+        DomainName = dr.domain,
+        TTL = dr.ttl == 1 and 600 or dr.ttl,
+        Type = dr.type,
     }
     return ali_dr
 end
@@ -185,16 +186,70 @@ end
 -- 将cloudflare的record类型转换为dnsrecord类型
 local function alirecord_to_dnsrecord(ali_dr)
     local dr = dnsrecord.new_dnsrecord {
-        id = ali_dr.id,
-        rr = string.gsub(ali_dr.name, "." .. ali_dr.zone_name, ""),
-        domain = ali_dr.zone_name,
-        type = ali_dr.type,
-        value = ali_dr.content,
+        id = ali_dr.RecordId,
+        rr = ali_dr.RR,
+        domain = ali_dr.DomainName,
+        type = ali_dr.Type,
+        value = ali_dr.Value,
         ttl = ali_dr.ttl }
     return dr
 end
 
-_M.ali_request = ali_request
+function _M.get_zone_id(_)
+    return "none"
+end
+
+function _M.get_dns_records(rr, domain, zone_id, match_opt)
+    match_opt = match_opt or "exact"
+    match_opt = match_opt:upper()
+    local resp_body, code, err = ali_request("DescribeDomainRecords", {
+        DomainName = domain,
+        KeyWord = rr,
+        SearchMode = match_opt,
+        Status = "ENABLE",
+    })
+    if not resp_body or not resp_body.DomainRecords then
+        return nil, code, err
+    else
+        local result = dnsrecord.new_recordlist()
+        for _, record in ipairs(resp_body.DomainRecords.Record) do
+            result = result .. alirecord_to_dnsrecord(record)
+        end
+        return result
+    end
+end
+
+function _M.delete_dns_record(recordlist, zone_id)
+    for _, dr in ipairs(recordlist) do
+        -- /zones/{zone_id}/dns_records
+        local result, code, err = ali_request("DeleteDomainRecord", {
+            RecordId = dr.id,
+        })
+        if result then
+            ali_log("delete dns record " .. dr.value .. " " .. dr.rr .. "." .. dr.domain .. " success", "INFO")
+        else
+            ali_log(
+                "delete dns record " .. dr.value .. " " .. dr.rr ..
+                "." .. dr.domain .. " failed: " .. code .. " " .. err,
+                "ERROR")
+        end
+    end
+end
+
+function _M.create_dns_record(recordlist, zone_id)
+    for _, dr in ipairs(recordlist) do
+        -- /zones/{zone_id}/dns_records
+        local result, code, err = ali_request("AddDomainRecord", dnsrecord_to_alirecord(dr))
+        if result then
+            ali_log("create dns record " .. dr.value .. " " .. dr.rr .. "." .. dr.domain .. " success", "INFO")
+        else
+            ali_log(
+                "create dns record " .. dr.value .. " " .. dr.rr ..
+                "." .. dr.domain .. " failed: " .. code .. " " .. err,
+                "ERROR")
+        end
+    end
+end
 
 function _M.new(init_info)
     if not init_info.auth then
