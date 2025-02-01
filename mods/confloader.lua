@@ -79,12 +79,9 @@ function _M.load_conf(name, arg)
         conf:close()
         return conf_table
     elseif format == "lua" then
-        local base = _G
-        _G = nil
-        base.dofile(conf_path)
-        local conf_table = config
-        _G = base
-        return conf_table
+        local env = {}
+        loadfile(conf_path, "t", env)()
+        return env.config
     end
 end
 
