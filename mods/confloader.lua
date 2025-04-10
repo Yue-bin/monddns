@@ -80,7 +80,12 @@ function _M.load_conf(name, arg)
         return conf_table
     elseif format == "lua" then
         local env = {}
-        loadfile(conf_path, "t", env)()
+        local config_chunk = loadfile(conf_path, "t", env)
+        -- 兼容lua5.1和luajit
+        if _VERSION == "Lua 5.1" then
+            setfenv(config_chunk, env)
+        end
+        config_chunk()
         return env.config
     end
 end
