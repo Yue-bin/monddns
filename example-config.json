@@ -6,6 +6,7 @@
     "confs": [
         {
             "provider": "cloudflare",
+            "default_ttl": 600,
             "subs": [
                 {
                     "sub_domain": "test",
@@ -71,6 +72,7 @@
         },
         {
             "provider": "namesilo",
+            "default_ttl": 600,
             "subs": [
                 {
                     "sub_domain": "test",
@@ -91,6 +93,7 @@
         },
         {
             "provider": "aliyun",
+            "default_ttl": 600,
             "subs": [
                 {
                     "sub_domain": "test",

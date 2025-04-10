@@ -1,5 +1,5 @@
 #!/usr/bin/env lua
----@diagnostic disable: different-requires
+--@diagnostic disable: different-requires
 
 -- monddns.lua
 
@@ -19,6 +19,8 @@ local log = require("mods/log")
 local dnsrecord = require("mods/dnsrecord")
 local json = require("cjson")
 local getip = require("mods/getip")
+local socket = require("socket")
+local dns = socket.dns
 
 -- Parse Configuration
 local conf = require("mods/confloader").load_conf("monddns", arg)
@@ -53,7 +55,7 @@ function processer.cloudflare(config)
         log = g_log,
     }
     if cf_ins == nil then
-        g_log:log("Failed to initialize cloudflare instance for " .. config.name .. ": " .. cf_err, "ERROR")
+        g_log:log(("Failed to initialize %s instance for %s: %s"):format("cloudflare", config.name, cf_err), "ERROR")
         return nil
     end
     return cf_ins
@@ -70,7 +72,7 @@ function processer.namesilo(config)
         log = g_log,
     }
     if ns_ins == nil then
-        g_log:log("Failed to initialize namesilo instance for " .. config.name .. ": " .. ns_err, "ERROR")
+        g_log:log(("Failed to initialize %s instance for %s: %s"):format("namesilo", config.name, ns_err), "ERROR")
         return nil
     end
     return ns_ins
@@ -88,7 +90,7 @@ function processer.aliyun(config)
         log = g_log,
     }
     if ali_ins == nil then
-        g_log:log("Failed to initialize aliyun instance for " .. config.name .. ": " .. ali_err, "ERROR")
+        g_log:log(("Failed to initialize %s instance for %s: %s"):format("aliyun", config.name, ali_err), "ERROR")
         return nil
     end
     return ali_ins
@@ -104,7 +106,34 @@ local function get_new_rl(config, sub, ip_setting, new_recordlist)
             " error " .. err, "ERROR")
         return
     end
-    g_log:log("Got " .. #ip_list .. " IPs with " .. ip_setting.method .. " " .. ip_setting.content, "INFO")
+
+    -- 使用socket.dns严格验证IP地址
+    local valid_ips = {}
+    for _, ip in ipairs(ip_list) do
+        local result, resolve_err = dns.getaddrinfo(ip)
+        if result then
+            local is_valid = false
+            for _, addr in ipairs(result) do
+                if addr.family == "inet" or addr.family == "inet6" then
+                    is_valid = true
+                    break
+                end
+            end
+            if is_valid then
+                table.insert(valid_ips, ip)
+            else
+                g_log:log(("Invalid IP format: %s"):format(ip), "WARN")
+            end
+        else
+            g_log:log(("DNS resolution failed for %s: %s"):format(ip, resolve_err), "WARN")
+        end
+    end
+    ip_list = valid_ips
+    if #ip_list == 0 then
+        g_log:log("No valid IP addresses found after verification", "ERROR")
+        return
+    end
+    g_log:log(("Acquired %d IPs via %s method"):format(#ip_list, ip_setting.method), "DEBUG")
     if #ip_list ~= 0 then
         g_log:log("those IPs are " .. table.concat(ip_list, ", "), "DEBUG")
     end
@@ -114,7 +143,7 @@ local function get_new_rl(config, sub, ip_setting, new_recordlist)
             domain = config.domain,
             type = ip_setting.type,
             value = ip,
-            ttl = 1
+            ttl = sub.ttl or conf.default_ttl or 600
         }
     end
 end
@@ -123,8 +152,20 @@ end
 local function processe_sub(config, ps_ins, zone_id, sub)
     g_log:log("Processing sub domain " .. sub.sub_domain, "INFO")
     -- 获取现有的dns记录
-    local recordlist, code, err = ps_ins.get_dns_records(sub.sub_domain, config.domain, zone_id)
-    if recordlist == nil then
+    -- 带指数退避的重试机制（使用socket.sleep）
+    local max_retries = 3
+    local base_delay = 1.0
+    local recordlist, code, err
+
+    for attempt = 1, max_retries do
+        recordlist, code, err = ps_ins.get_dns_records(sub.sub_domain, config.domain, zone_id)
+        if recordlist then break end
+        local delay = base_delay * (2 ^ (attempt - 1))
+        g_log:log(("获取DNS记录尝试 %d/%d 失败，%.1f秒后重试: %s"):format(attempt, max_retries, delay, err), "WARN")
+        socket.sleep(delay) -- 使用socket.sleep替代os.execute
+    end
+
+    if not recordlist then
         g_log:log(
             "Failed to get dns records for " ..
             config.name .. " " .. sub.sub_domain .. ": " .. code .. " " .. err,
@@ -151,7 +192,22 @@ local function processe_sub(config, ps_ins, zone_id, sub)
     g_log:log("To add: " .. json.encode(to_add), "DEBUG")
 
     -- 删除多余的dns记录
-    ps_ins.delete_dns_record(to_delete, zone_id)
+    -- 删除操作重试逻辑
+    local max_retries = 3
+    local base_delay = 1.0
+    local del_success, del_code, del_err
+
+    for attempt = 1, max_retries do
+        del_success, del_code, del_err = ps_ins.delete_dns_record(to_delete, zone_id)
+        if del_success then break end
+        local delay = base_delay * (2 ^ (attempt - 1))
+        g_log:log(("删除记录尝试 %d/%d 失败，%.1f秒后重试: %s"):format(attempt, max_retries, delay, del_err), "WARN")
+        socket.sleep(delay) -- 使用socket.sleep
+    end
+
+    if not del_success then
+        g_log:log(("删除 %d 条记录失败（尝试 %d 次）: %s"):format(#to_delete, max_retries, del_err), "ERROR")
+    end
 
     -- 添加新的dns记录
     ps_ins.create_dns_record(to_add, zone_id)
@@ -191,3 +247,7 @@ for _, config in ipairs(conf.confs) do
     processe_conf(config)
 end
 g_log:log("End processing", "INFO")
+-- 确保关闭日志文件
+if log_file then
+    log_file:close()
+end

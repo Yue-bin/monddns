@@ -12,6 +12,7 @@ config = {
             auth = {
                 api_token = "api token",
             },
+            default_ttl = 600,
             subs = {
                 {
                     sub_domain = "test",
@@ -78,6 +79,7 @@ config = {
             auth = {
                 apikey = "your api key",
             },
+            default_ttl = 600,
             subs = {
                 {
                     sub_domain = "test",
@@ -99,6 +101,7 @@ config = {
                 ak_id = "your ak id",
                 ak_secret = "your ak secret",
             },
+            default_ttl = 600,
             subs = {
                 {
                     sub_domain = "test",
