@@ -179,7 +179,7 @@ function _M.new(init_info)
     else
         return nil, "invalid auth type"
     end
-    log = init_info.log or require("mods.log").init()
+    log = init_info.log or require("log").init()
     return _M
 end
 

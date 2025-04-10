@@ -83,6 +83,7 @@ function _M.load_conf(name, arg)
         local config_chunk = loadfile(conf_path, "t", env)
         -- 兼容lua5.1和luajit
         if _VERSION == "Lua 5.1" then
+            ---@diagnostic disable-next-line: deprecated, param-type-mismatch
             setfenv(config_chunk, env)
         end
         config_chunk()

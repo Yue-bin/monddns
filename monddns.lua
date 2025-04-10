@@ -161,7 +161,7 @@ local function processe_sub(config, ps_ins, zone_id, sub)
         if recordlist then break end
         local delay = base_delay * (2 ^ (attempt - 1))
         g_log:log(
-        ("try to get dns records %d/%d failed, retrying in %.1f secs : %s"):format(attempt, max_retries, delay, err),
+            ("try to get dns records %d/%d failed, retrying in %.1f secs : %s"):format(attempt, max_retries, delay, err),
             "WARN")
         socket.sleep(delay) -- 使用socket.sleep替代os.execute
     end
