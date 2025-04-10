@@ -10,7 +10,7 @@ local http = require("socket.http")
 local ltn12 = require("ltn12")
 local json = require("cjson")
 local hmac = require("openssl.hmac")
-local dnsrecord = require("mods.dnsrecord")
+local dnsrecord = require("dnsrecord")
 local basexx = require("basexx")
 
 local log = nil

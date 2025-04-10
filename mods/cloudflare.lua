@@ -9,7 +9,7 @@ local url = require("socket.url")
 local http = require("socket.http")
 local ltn12 = require("ltn12")
 local json = require("cjson")
-local dnsrecord = require("mods.dnsrecord")
+local dnsrecord = require("dnsrecord")
 
 
 local base_url = "https://api.cloudflare.com/client/v4"

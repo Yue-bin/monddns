@@ -12,17 +12,17 @@ PATH = string.match(arg[0], "^(.+)/[^/]+$") .. "/"
 if is_rel_path(PATH) then
     PATH = os.getenv("PWD") .. "/" .. PATH
 end
-package.path = ('%s?.lua;%s'):format(PATH, package.path)
+package.path = ('%s?.lua;%s'):format(PATH .. "mods/", package.path)
 
-local log = require("mods/log")
-local dnsrecord = require("mods/dnsrecord")
+local log = require("log")
+local dnsrecord = require("dnsrecord")
 local json = require("cjson")
-local getip = require("mods/getip")
+local getip = require("getip")
 local socket = require("socket")
 local dns = socket.dns
 
 -- Parse Configuration
-local conf = require("mods/confloader").load_conf("monddns", arg)
+local conf = require("confloader").load_conf("monddns", arg)
 if conf == nil then
     print("Failed to load configuration")
     os.exit(1)
@@ -44,7 +44,7 @@ local processer = {
 -- cloudflare
 function processer.cloudflare(config)
     -- 初始化
-    local cf = require("mods/cloudflare")
+    local cf = require("cloudflare")
     local cf_ins, cf_err = cf.new {
         auth = {
             api_token = config.auth.api_token,
@@ -63,7 +63,7 @@ end
 --namesilo
 function processer.namesilo(config)
     -- 初始化
-    local ns = require("mods/namesilo")
+    local ns = require("namesilo")
     local ns_ins, ns_err = ns.new {
         auth = {
             apikey = config.auth.apikey,
@@ -80,7 +80,7 @@ end
 --aliyun
 function processer.aliyun(config)
     -- 初始化
-    local ali = require("mods/aliyun")
+    local ali = require("aliyun")
     local ali_ins, ali_err = ali.new {
         auth = {
             ak_id = config.auth.ak_id,

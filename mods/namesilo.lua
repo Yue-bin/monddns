@@ -8,7 +8,7 @@ local _M = {}
 
 local http = require("socket.http")
 local json = require("cjson")
-local dnsrecord = require("mods.dnsrecord")
+local dnsrecord = require("dnsrecord")
 
 
 local base_url = "https://www.namesilo.com/api/"
