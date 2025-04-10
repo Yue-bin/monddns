@@ -160,7 +160,9 @@ local function processe_sub(config, ps_ins, zone_id, sub)
         recordlist, code, err = ps_ins.get_dns_records(sub.sub_domain, config.domain, zone_id)
         if recordlist then break end
         local delay = base_delay * (2 ^ (attempt - 1))
-        g_log:log(("获取DNS记录尝试 %d/%d 失败，%.1f秒后重试: %s"):format(attempt, max_retries, delay, err), "WARN")
+        g_log:log(
+        ("try to get dns records %d/%d failed, retrying in %.1f secs : %s"):format(attempt, max_retries, delay, err),
+            "WARN")
         socket.sleep(delay) -- 使用socket.sleep替代os.execute
     end
 
@@ -191,22 +193,7 @@ local function processe_sub(config, ps_ins, zone_id, sub)
     g_log:log("To add: " .. json.encode(to_add), "DEBUG")
 
     -- 删除多余的dns记录
-    -- 删除操作重试逻辑
-    local max_retries = 3
-    local base_delay = 1.0
-    local del_success, del_code, del_err
-
-    for attempt = 1, max_retries do
-        del_success, del_code, del_err = ps_ins.delete_dns_record(to_delete, zone_id)
-        if del_success then break end
-        local delay = base_delay * (2 ^ (attempt - 1))
-        g_log:log(("删除记录尝试 %d/%d 失败，%.1f秒后重试: %s"):format(attempt, max_retries, delay, del_err), "WARN")
-        socket.sleep(delay) -- 使用socket.sleep
-    end
-
-    if not del_success then
-        g_log:log(("删除 %d 条记录失败（尝试 %d 次）: %s"):format(#to_delete, max_retries, del_err), "ERROR")
-    end
+    ps_ins.delete_dns_record(to_delete, zone_id)
 
     -- 添加新的dns记录
     ps_ins.create_dns_record(to_add, zone_id)
