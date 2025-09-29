@@ -6,8 +6,8 @@
 local _M = {}
 
 local support_format = {
-    "json",
     "lua",
+    "json",
 }
 
 local preset_conf_path = {
@@ -28,7 +28,7 @@ end
 
 local function get_format(conf_path)
     local format = string.match(conf_path, "%.(%a+)$")
-    for _, v in pairs(support_format) do
+    for _, v in ipairs(support_format) do
         if v == format then
             return format
         end
